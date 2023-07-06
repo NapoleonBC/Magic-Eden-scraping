@@ -7,7 +7,7 @@ const app = express();
 
 app.use(express.json());
 
-const port = 5000;
+const port = 3000;
 
 app.post('/scraping', async (req, res) => {
     url = "https://magiceden.io/ordinals/marketplace/omb"
