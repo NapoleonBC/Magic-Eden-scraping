@@ -1,5 +1,5 @@
 const cheerio = require('cheerio');
-const pretty = require('pretty');
+// const pretty = require('pretty');
 const fs = require('fs');
 const express = require('express');
 const axios = require('axios');
@@ -7,16 +7,16 @@ const app = express();
 
 app.use(express.json());
 
-const port = 5000;
+const port = 3000;
 
 app.post('/scraping', async (req, res) => {
     url = "https://magiceden.io/ordinals/marketplace/omb"
-    if (!req.backend_url || !req.symbol) {
+    if (!req.body.backend_url || !req.body.symbol) {
         return res.status(400).send({ success: false, msg: 'Invalid request' });
     }
-    const backend_url = req.backend_url
-    const symbol = req.symbol
-    url = `${backend_url}/marketplace/${omb}`
+    const backend_url = req.body.backend_url
+    const symbol = req.body.symbol
+    url = `${backend_url}/marketplace/${symbol}`
     console.log(url)
 
     try {
@@ -24,32 +24,45 @@ app.post('/scraping', async (req, res) => {
         const { data } = await axios.get(url);
         // Load HTML we fetched in the previous line
         const $ = cheerio.load(data);
-        // Select all the list items in plainlist class
-        const listItems = $(".plainlist ul li");
-        // Stores data for all countries
-        const countries = [];
-        // Use .each method to loop through the li we selected
-        listItems.each((idx, el) => {
-            // Object holding data for each country/jurisdiction
-            const country = { name: "", iso3: "" };
-            // Select the text content of a and span elements
-            // Store the textcontent in the above object
-            country.name = $(el).children("a").text();
-            country.iso3 = $(el).children("span").text();
-            // Populate countries array with country data
-            countries.push(country);
-        });
-        // Logs countries array to the console
-        console.dir(countries);
-        // Write countries array in countries.json file
-        fs.writeFile("coutries.json", JSON.stringify(countries, null, 2), (err) => {
+        // Select the specific <script> tag by its id and type attributes
+        const scriptTag = $('script#\\__NEXT_DATA__[type="application/json"]');
+        console.log(scriptTag)
+        // Extract the content of the script tag
+        const scriptContent = scriptTag.html();
+        const collection = JSON.parse(scriptContent);
+
+        // const btc_collections = [];
+        // Use .each method to loop through the table we selected
+        // listItems.each((idx, el) => {
+        //     btc_collections.push(collection);
+        // });
+        // Logs btc_collections array to the console
+        // console.dir(btc_collections);
+        // Write btc_collections array in btc_collections.json file
+        /*fs.writeFile("coutries.json", JSON.stringify(btc_collections, null, 2), (err) => {
             if (err) {
                 console.error(err);
                 return;
             }
             console.log("Successfully written data to file");
-        });
+        });*/
+        response = collection.props.pageProps
+        // Accessing the values from the body
+        const name = response.collection.name;
+        const imageURI = response.collection.imageURI;
+        const floorPrice = response.stats.find(stat => stat.trait_type === 'FLOOR').value;
+
+        // Creating an object with the extracted values
+        const extractedValues = {
+            name: name,
+            imageURI: imageURI,
+            floorPrice: floorPrice
+        };
+        return res.status(200).send({ success: true, msg: extractedValues });
     } catch (err) {
         console.error(err);
+        return res.status(400).send({ success: false, msg: 'Invalid request' });
     }
 })
+
+app.listen(port)
