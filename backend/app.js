@@ -30,26 +30,38 @@ app.post('/scraping', async (req, res) => {
         // Extract the content of the script tag
         const scriptContent = scriptTag.html();
         const collection = JSON.parse(scriptContent);
-        
+
         // const btc_collections = [];
         // Use .each method to loop through the table we selected
         // listItems.each((idx, el) => {
-            //     btc_collections.push(collection);
-            // });
-            // Logs btc_collections array to the console
-            // console.dir(btc_collections);
-            // Write btc_collections array in btc_collections.json file
-            /*fs.writeFile("coutries.json", JSON.stringify(btc_collections, null, 2), (err) => {
-                if (err) {
-                    console.error(err);
-                    return;
-                }
-                console.log("Successfully written data to file");
-            });*/
-            response = collection.props.pageProps
-            return res.status(200).send({ success: true, msg: response });
-        } catch (err) {
+        //     btc_collections.push(collection);
+        // });
+        // Logs btc_collections array to the console
+        // console.dir(btc_collections);
+        // Write btc_collections array in btc_collections.json file
+        /*fs.writeFile("coutries.json", JSON.stringify(btc_collections, null, 2), (err) => {
+            if (err) {
+                console.error(err);
+                return;
+            }
+            console.log("Successfully written data to file");
+        });*/
+        response = collection.props.pageProps
+        // Accessing the values from the body
+        const name = response.collection.name;
+        const imageURI = response.collection.imageURI;
+        const floorPrice = response.stats.find(stat => stat.trait_type === 'FLOOR').value;
+
+        // Creating an object with the extracted values
+        const extractedValues = {
+            name: name,
+            imageURI: imageURI,
+            floorPrice: floorPrice
+        };
+        return res.status(200).send({ success: true, msg: extractedValues });
+    } catch (err) {
         console.error(err);
+        return res.status(400).send({ success: false, msg: 'Invalid request' });
     }
 })
 
