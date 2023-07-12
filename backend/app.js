@@ -3,11 +3,80 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 const express = require('express');
 const axios = require('axios');
+const puppeteer = require('puppeteer');
+const nodemon = require('nodemon');
+
 const app = express();
+
+let browser;
+let page
 
 app.use(express.json());
 
+(async () => {
+    // browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+    browser = await puppeteer.launch({
+        headless: 'new',
+    });
+    page = await browser.newPage();
+})();
+
+// await browser.close();
 const port = 3000;
+
+
+app.get('/latest-sales', async (req, res) => {
+    url = 'https://api-mainnet.magiceden.io/v2/ord/btc/carousels/latest-sales'
+    try {
+        await page.goto(url);
+        const data = await page.content();
+        // Load HTML we fetched in the previous line
+        const $ = cheerio.load(data);
+
+        return res.status(200).send({ success: true, msg: JSON.parse($.root().text())});
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
+app.get('/highest-activity-collections', async (req, res) => {
+    url = 'https://api-mainnet.magiceden.io/v2/ord/btc/carousels/highest-activity-collections'
+    try {
+        await page.goto(url);
+        const data = await page.content();
+        // Load HTML we fetched in the previous line
+        const $ = cheerio.load(data);
+
+        return res.status(200).send({ success: true, msg: JSON.parse($.root().text())});
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
+app.get('/popular-collections', async (req, res) => {
+    const limit = parseInt(req.query.limit) || 1000;    // avoid bad request exception
+    const window = req.query.window || '7d';
+    const url = `https://api-mainnet.magiceden.io/v2/ord/btc/popular_collections?limit=${limit}&window=${window}`;
+    try {
+        console.log(url)
+        console.log(limit)
+        console.log(window)
+        status_code = (await page.goto(url)).status();
+        const data = await page.content();
+        // Load HTML we fetched in the previous line    
+        const $ = cheerio.load(data);
+
+        return res.status(status_code).send( { success: status_code==200 , msg: JSON.parse($.root().text()) } );
+    } catch (error) {
+        console.error(error);
+        return res.status(403).send('Access denied');
+    }
+});
+
 
 app.post('/scraping', async (req, res) => {
     url = "https://magiceden.io/ordinals/marketplace/omb"
@@ -31,21 +100,6 @@ app.post('/scraping', async (req, res) => {
         const scriptContent = scriptTag.html();
         const collection = JSON.parse(scriptContent);
 
-        // const btc_collections = [];
-        // Use .each method to loop through the table we selected
-        // listItems.each((idx, el) => {
-        //     btc_collections.push(collection);
-        // });
-        // Logs btc_collections array to the console
-        // console.dir(btc_collections);
-        // Write btc_collections array in btc_collections.json file
-        /*fs.writeFile("coutries.json", JSON.stringify(btc_collections, null, 2), (err) => {
-            if (err) {
-                console.error(err);
-                return;
-            }
-            console.log("Successfully written data to file");
-        });*/
         response = collection.props.pageProps
         // Accessing the values from the body
         const name = response.collection.name;
@@ -65,4 +119,6 @@ app.post('/scraping', async (req, res) => {
     }
 })
 
-app.listen(port)
+app.listen(port, () => {
+    console.log('Server is running on port 3000');
+});
